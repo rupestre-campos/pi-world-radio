@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import requests
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter
@@ -60,6 +61,8 @@ def list_stations(geojson_data, selected_country, selected_city):
             return data["data"]["content"][0]["items"]
 
 def play_stream(stream_url):
+    print(" use  / * to decrease increase volume" )
+    print(" use m to mute and q to quit" )
     try:
         # Use subprocess to execute the MPlayer command with the stream URL
         subprocess.run(['mpv',
