@@ -70,6 +70,9 @@ class Station(urwid.WidgetWrap):
         #print("Hit  / to decrease and * to increase volume" )
         #print("Hit space to pause, m to mute and q to quit" )
         try:
+            subprocess.run(["clear"])
+            print("Press q to exit")
+            print("#"*200)
             # Use subprocess to execute the MPlayer command with the stream URL
             subprocess.run(['mpv',
                             '--cache-pause-initial=yes',
@@ -80,6 +83,8 @@ class Station(urwid.WidgetWrap):
                             '--sid=1',
                             '-cache-secs=30',
                             self.stream_url])
+            subprocess.run(["clear"])
+            print("Press some key to continue...")
             return 1
         except Exception as e:
             print(f"Error: {e}")
