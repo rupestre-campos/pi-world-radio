@@ -14,7 +14,6 @@ geojson_url = f"https://radio.garden/api/ara/content/places"
 def clear():
     try:
         subprocess.run(["clear"])
-        subprocess.run(["cls" ])
     except:
         pass
 
