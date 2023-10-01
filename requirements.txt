@@ -1,2 +1,4 @@
 requests==2.26.0
 prompt_toolkit
+aiohttp
+fastapi
