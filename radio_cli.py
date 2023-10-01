@@ -5,13 +5,21 @@ from prompt_toolkit.completion import WordCompleter
 import subprocess
 import time
 import json
+import unicodedata
+
 
 default_file_path = "./app/data/geo_json.min.json"
 geojson_url = f"https://radio.garden/api/ara/content/places"
 
+
+def remove_accents(input_str):
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    only_ascii = nfkd_form.encode('ASCII', 'ignore')
+    return only_ascii.decode("utf-8")
+
 def get_feature(d):
     feature = {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [d['geo'][0], d['geo'][1]]}}
-    feature['properties'] = {'title': d['title'], 'country': d['country'], 'location_id': d['id'], 'lng': d['geo'][0], 'lat': d['geo'][1]}
+    feature['properties'] = {'title': remove_accents(d['title']), 'country': remove_accents(d['country']), 'location_id': d['id'], 'lng': d['geo'][0], 'lat': d['geo'][1]}
     return feature
 
 def fetch_geojson_data(url, default_file_path):
