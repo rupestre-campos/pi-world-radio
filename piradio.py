@@ -94,20 +94,18 @@ class Station(urwid.WidgetWrap):
         channel_id = self.item["href"].split("/")[-1]
         val = int(time.time() * 1000)
         return f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
-        
+
 
     def play_radio(self, button):
-        response = urwid.Text(
-            [
-                u'  Selected ', u'\n',
-                self.item["title"], u'\n',
-                u'(press q to exit playback)'])
+        response = urwid.Text([
+            u'  Selected ', u'\n',
+            self.item["title"], u'\n'
+        ])
 
         done = MenuButton(u'play', self.play_stream)
         response_box = urwid.Filler(urwid.Pile([response, done]))
         top.open_box(urwid.AttrMap(response_box, 'options'))
 
-    
 class Choice(urwid.WidgetWrap):
     def __init__(self, caption, location_id, geom):
         super(Choice, self).__init__(
@@ -133,7 +131,7 @@ class Choice(urwid.WidgetWrap):
             urwid.AttrMap(urwid.Text([u"\n  ", self.caption]), 'heading'),
             urwid.AttrMap(line, 'line'),
             urwid.Divider()] + stations + [urwid.Divider()]))
-        self.menu = urwid.AttrMap(listbox, 'options')        
+        self.menu = urwid.AttrMap(listbox, 'options')
         top.open_box(self.menu)
 
 
@@ -163,14 +161,15 @@ def fetch_geojson_data(url, default_file_path):
             location_id = item['id']
             geom = {'type': 'Point', 'coordinates': [item['geo'][0], item['geo'][1]]}
             data_parsed[country][city] = {"id":location_id, "geometry": geom}
-        
         return data_parsed
 
     except requests.exceptions.RequestException as e:
         print("Error fetching GeoJSON data:", e)
         return None
 
-
+def exit_on_q(key):
+    if key in ('q', 'Q'):
+        raise urwid.ExitMainLoop()
 
 if __name__=="__main__":
     data_parsed = fetch_geojson_data(geojson_url, default_file_path)
@@ -191,5 +190,5 @@ if __name__=="__main__":
     ])
     top = HorizontalBoxes()
     top.open_box(menu_top.menu)
-    urwid.MainLoop(urwid.Filler(top, 'middle', 10), palette).run()
+    urwid.MainLoop(urwid.Filler(top, 'middle', 10), palette, unhandled_input=exit_on_q).run()
 
