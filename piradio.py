@@ -71,6 +71,10 @@ class Station(urwid.WidgetWrap):
         #print("Hit space to pause, m to mute and q to quit" )
         try:
             subprocess.run(["clear"])
+            print(f"Radio name: {self.item['title']}")
+            print(f"Country: {self.item['country']}")
+            print(f"Location: {self.item['location']}")
+            print(f"Position: {self.item['geom']['coordinates']}")
             print("Press q to exit")
             print("#"*200)
             # Use subprocess to execute the MPlayer command with the stream URL
@@ -107,18 +111,20 @@ class Station(urwid.WidgetWrap):
         top.open_box(urwid.AttrMap(response_box, 'options'))
 
 class Choice(urwid.WidgetWrap):
-    def __init__(self, caption, location_id, geom):
+    def __init__(self, caption, location_id, geom, country):
         super(Choice, self).__init__(
             MenuButton(caption, self.list_radios))
         self.caption = caption
         self.location_id = location_id
         self.geom = geom
+        self.country = country
 
     def get_stations(self):
         response = requests.get(f"https://radio.garden/api/ara/content/page/{self.location_id}/channels")
         data = response.json()
         stations = []
         for item in data["data"]["content"][0]["items"]:
+            item.update({"country": self.country, "location": self.caption, "geom": self.geom})
             stations.append(Station(item))
         return stations
 
@@ -185,6 +191,7 @@ if __name__=="__main__":
                     city,
                     data_parsed[country][city]["id"],
                     data_parsed[country][city]["geometry"],
+                    country
                 ) for city in sorted(data_parsed[country].keys())])
         for country in sorted(data_parsed.keys())
     ])
