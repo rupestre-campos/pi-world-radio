@@ -1,6 +1,6 @@
-
+*.env
 **/*.swp
-
+*.venv
 /tmp
 /app/data
 */node_modules

@@ -2,14 +2,13 @@
 Description=Pi Radio App
 
 [Service]
-ExecStart=/usr/bin/node server.js
+ExecStart=python server.py
 Restart=always
 RestartSec=1
-User=radio
+User=c
 Group=nogroup
 Environment=PATH=/usr/bin:/usr/local/bin
-Environment=NODE_ENV=production
-WorkingDirectory=/home/radio/pi-world-radio/app
+WorkingDirectory=/home/c/pi-world-radio/app
 
 [Install]
 WantedBy=multi-user.target

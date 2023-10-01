@@ -335,7 +335,7 @@ var getChannels = function (locationId, locationName, lng, lat) {
       clearSysinfo();
       channelsWrapper.style.display = "";
       var img = document.createElement("img");
-      img.src = "/assets/img/signal-tower.png";
+      img.src = "/public/assets/img/signal-tower.png";
       img.classList.add('tower-icon');
       var span = document.createElement("span");
       span.textContent = locationName;
@@ -848,16 +848,16 @@ window.addEventListener("keydown", function (event) {
 //
 // Initialize Mapbox
 
-mapboxgl.accessToken = ".................................................................."
-const map = new mapboxgl.Map({
-  container: "map",
-  style: "mapbox://styles/wrecker/clkz7vn0000n301pb1mtjho13",
-  center: [-53, 35.2],
-  zoom: 2.2,
-  minZoom: 2.05,
-  maxZoom: 12,
-});
-map.keyboard.disable();
+L.mapbox.accessToken = ''
+const map = L.mapbox.map('map').setView([-21,-45], 8);
+L.mapbox.styleLayer('').addTo(map);
+//  style: "",
+//  center: [-53, 35.2],
+//  zoom: 2.2,
+//  minZoom: 2.05,
+//  maxZoom: 12,
+//});
+//map.keyboard.disable();
 
 // https://stackoverflow.com/a/18883819
 // This function takes in latitude and longitude of two location and returns the distance between them as the crow flies (in km)
@@ -909,92 +909,82 @@ var getChannelsAtCenter = function () {
     currentLocationId = "";
   }
   currentCenter = map.getCenter();
-}
-
-// When the map loads, add the radio.garden data
-map.on("load", () => {
-  map.addSource("locations", {
-    type: "geojson",
-    data: "/assets/js/geo_json.min.json",
-    generateId: true, // This ensures that all features have unique IDs
-  });
-
-  // Add locations as a layer and style it
-  map.addLayer({
-    id: "locations",
-    type: "circle",
-    source: "locations",
-    layout: {
-      // Make the layer visible by default.
-      "visibility": "none"
-    },
-    paint: {
-      // The feature-state dependent circle-radius expression will render
-      // the radius size according to its magnitude when
-      // a feature's hover state is set to true
-      //'circle-radius': 5,
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        // zoom is 5 (or less) -> circle radius will be 1px
-        5,
-        1,
-        // zoom is 20 (or greater) -> circle radius will be 10px
-        20,
-        40,
-      ],
-      // "circle-stroke-color": "#d32da0",
-      "circle-stroke-color": "#b07126",
-      "circle-stroke-width": 1,
-      // The feature-state dependent circle-color expression will render
-      // the color according to its magnitude when
-      // a feature's hover state is set to true
-      // "circle-color": "#d32da0",
-      "circle-color": "#b08116",
-      "circle-opacity": 0.5,
-    },
-  });
-
-  map.on("click", "locations", (e) => {
-    getChannels(e.features[0].properties.location_id, e.features[0].properties.title + ", " + e.features[0].properties.country,
-                e.features[0].properties.lng, e.features[0].properties.lat);
-    selectTopChannel();
-  });
-
-  map.on("zoomend", () => {
-    zl = map.getZoom();
-    if (zl >= 5.0) {
-      map.setLayoutProperty("locations", "visibility", "visible");
-    } else {
-      map.setLayoutProperty("locations", "visibility", "none");
-      clearChannelsList();
-    }
-  });
+};
 
 
-  map.on("moveend", () => {
-    if (ignoreMapMoveOnce) {
-      ignoreMapMoveOnce = false;
-      return;
-    }
-    // check if map center has moved significantly
-    // typically zoom-in/out will not change center
-    if (compareCoordinates(currentCenter, map.getCenter())) {    
-      clearTimeout(getChannelsDelayTimer);
-      currentZoom = map.getZoom()
-      if (currentZoom >= 5.0) { 
-        getChannelsDelayTimer = setTimeout(getChannelsAtCenter, 500);
-      }
-    }
-  });    
-});
+// Handle map load event
+//map.on('ready', function() {
+    // Fetch GeoJSON data from the FastAPI endpoint
+    fetch('/public/assets/js/geo_json.min.json')
+        .then(response => response.json()) // Parse the JSON response
+        .then(geoJsonData => {
+            // Add GeoJSON data as a layer
+            var locationsLayer = L.geoJSON(geoJsonData, {
+                pointToLayer: function(feature, latlng) {
+                    // Style the markers based on properties
+                    return L.circleMarker(latlng, {
+                        radius: 6,
+                        fillColor: '#b08116',
+                        color: '#b07126',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.5
+                    });
+                },
+                onEachFeature: function(feature, layer) {
+                    var properties = feature.properties;
+
+                    // Add click event
+                    layer.on('click', function() {
+                        getChannels(properties.location_id, properties.title + ', ' + properties.country, properties.lng, properties.lat);
+                        selectTopChannel();
+                    });
+                }
+            }).addTo(map);
+
+            // Handle zoomend event
+            map.on('zoomend', function() {
+                var zl = map.getZoom();
+                if (zl >= 5.0) {
+                    // Show markers when zoom level is greater than or equal to 5
+                    map.addLayer(locationsLayer);
+                } else {
+                    // Remove markers when zoom level is less than 5
+                    map.removeLayer(locationsLayer);
+                    clearChannelsList();
+                }
+            });
+
+            // Handle moveend event
+            map.on('moveend', function() {
+                if (ignoreMapMoveOnce) {
+                    ignoreMapMoveOnce = false;
+                    return;
+                }
+
+                // Check if map center has moved significantly
+                if (compareCoordinates(currentCenter, map.getCenter())) {
+                    clearTimeout(getChannelsDelayTimer);
+                    currentZoom = map.getZoom();
+
+                    // Fetch channels if zoom level is greater than or equal to 5
+                    if (currentZoom >= 5.0) {
+                        getChannelsDelayTimer = setTimeout(getChannelsAtCenter, 500);
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching GeoJSON data:', error);
+        });
+//});
+
 
 //////////////////////////////////////////////////////////////////////
 // player.js
 
 staticPlayer = new Howl({
-  src: ["/assets/audio/static.mp3"],
+  src: ["/public/assets/audio/static.mp3"],
   html5: false,
   autoplay: false,
   loop: true,

@@ -32,7 +32,7 @@
     <div id="content">
       <iframe id="content-frame"
         frameborder="0"
-        src="blank.html"
+        src="/public/blank.html"
       ></iframe>
     </div>
     <script>
@@ -45,14 +45,14 @@
         xhr.open('GET', '/checkOnline');
         xhr.onload = function() {
           var status = xhr.status;
-          if (status === 204) {
-            console.log("/checkOnline returned 204");
-            contentFrame.src = "/map.html";
+          if (status === 200) {
+            console.log("/checkOnline returned 200");
+            contentFrame.src = "/public/map.html";
             online = true;
           } else {
-            console.log("/checkOnline did not return 204. We are offline");
+            console.log("/checkOnline did not return 200. We are offline");
             if (online) {
-              contentFrame.src = "/offline.html";
+              contentFrame.src = "/public/offline.html";
               online = false;
             }
             setTimeout(checkOnline, 30000);
