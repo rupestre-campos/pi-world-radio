@@ -19,6 +19,8 @@ then run and have fun
 
 python3 radio_cli.py
 
+iteractive version with
+python3 piradio.py
 
 Still work in progress. Feedback and help welcome.
 
