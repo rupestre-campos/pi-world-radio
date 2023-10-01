@@ -75,8 +75,8 @@ class Station(urwid.WidgetWrap):
             print(f"Country: {self.item['country']}")
             print(f"Location: {self.item['location']}")
             print(f"Position: {self.item['geom']['coordinates']}")
-            print("Keybindings: / to increase vol, * to decrease vol")
-            print("             m mute, space to pause, arrows to seek stream ")
+            print("Keybindings: / to decrease vol, * to increase vol")
+            print("             m to mute, space to pause, arrows to seek stream ")
             print("Press q to exit")
             print("#"*200)
             # Use subprocess to execute the MPlayer command with the stream URL
