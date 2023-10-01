@@ -7,17 +7,25 @@
 ## What is this?
 
 A retro radio to tune-in to streaming stations from around the world.
+A fork from original project intended to run with python on the terminal only.
 
-## Looking for Docs?
+##Installation
+install mpv with
 
-The build docs are here: [https://trustmeiamaninja.github.io/pi-world-radio](https://trustmeiamaninja.github.io/pi-world-radio)
+sudo apt install mpv
 
-## Notes to this fork
-Gpio control has been deactivated for now, but keyboard keys h, l control sound up and down, and arrows to move map.
-Modified version with a fastapi server instead of node js one for better compatibility with older systems running debian, 
-I am talking about a pentium 4 single 2.8Ghz core with 1.5Gb ram and 40Gb Hdd notebook.
+then python requirements with
+
+python3 -m pip install -r requirements.txt
+
+then run and have fun
+python3 radio_cli.py
+
+
+# How this started
 
 The map was converted to mapbox.js only without the gl part for old systems.
-Even like this it was too much for  the map to work so, i decided to make a cli to run the music streams, and seems to work.
-Still work in progress.
+Even like this it was too much for my old laptop to deal,
+i decided to make a cli to run the music streams, and seems to work.
+Still work in progress. Feedback welcome.
 
