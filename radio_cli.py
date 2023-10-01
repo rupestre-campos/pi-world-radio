@@ -28,11 +28,7 @@ def get_feature(d):
     feature['properties'] = {'title': remove_accents(d['title']), 'country': remove_accents(d['country']), 'location_id': d['id'], 'lng': d['geo'][0], 'lat': d['geo'][1]}
     return feature
 
-def fetch_geojson_data(url, default_file_path, update=True):
-    if os.path.exists(default_file_path) and update==False:
-        with open(default_file_path) as file_open:
-            geo_json = json.load(file_open)
-            return geo_json
+def fetch_geojson_data(url, default_file_path):
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raise exception for bad requests
@@ -46,6 +42,11 @@ def fetch_geojson_data(url, default_file_path, update=True):
         return geo_json
 
     except requests.exceptions.RequestException as e:
+        if os.path.exists(default_file_path):
+            with open(default_file_path) as file_open:
+                geo_json = json.load(file_open)
+                return geo_json
+
         print("Error fetching GeoJSON data:", e)
         return None
 
@@ -97,11 +98,7 @@ def play_stream(stream_url):
 def main():
     clear()
     print("Welcome to radio.garden in a cli")
-    update_data = False
-    update_locations = input(" wanna update locations? [Y/n]" )
-    if update_locations == "Y":
-        update_data = True
-    geojson_data = fetch_geojson_data(geojson_url, default_file_path, update_data)
+    geojson_data = fetch_geojson_data(geojson_url, default_file_path)
 
     if geojson_data:
         countries = list_countries(geojson_data)
@@ -114,7 +111,7 @@ def main():
         cities = list_cities(geojson_data, selected_country)
         city_completer = WordCompleter(cities, ignore_case=True)
         selected_city = prompt('Select a city: ', completer=city_completer)
-        if selected_city not in cities: 
+        if selected_city not in cities:
             print("City not in list, exiting..." )
             return None
         stations = list_stations(geojson_data, selected_country, selected_city)
@@ -122,7 +119,7 @@ def main():
         selected_station = prompt('Select a station: ', completer=station_completer)
 
         station_data = next((station for station in stations if station['title'] == selected_station), None)
-        if not station_data: 
+        if not station_data:
             print(" Station not in list, exiting..." )
         channel_id = station_data["href"].split("/")[-1]
         val = int(time.time() * 1000)

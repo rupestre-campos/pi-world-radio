@@ -1,13 +1,10 @@
-# Raspberry Pi Retro World Radio
-
-<picture>
-  <img src="https://github.com/trustMeIAmANinja/pi-world-radio/blob/main/docs/assets/img/retro_pi_world_radio_hero.jpg" />
-</picture>
+# pi-world-radio
 
 ## What is this?
 
-A retro radio to tune-in to streaming stations from around the world.
-A fork from original project intended to run with python on the terminal only.
+A cli to tune-in to streaming stations from around the world.
+A fork from original project pi-world-radio adapted to run with python on the terminal
+being suitable for very old hardware. Tested in a pentium 4 single core, 1.5Gb RAM from 2000's era.
 
 ##Installation
 install mpv with
@@ -19,13 +16,9 @@ then python requirements with
 python3 -m pip install -r requirements.txt
 
 then run and have fun
+
 python3 radio_cli.py
 
 
-# How this started
-
-The map was converted to mapbox.js only without the gl part for old systems.
-Even like this it was too much for my old laptop to deal,
-i decided to make a cli to run the music streams, and seems to work.
-Still work in progress. Feedback welcome.
+Still work in progress. Feedback and help welcome.
 
