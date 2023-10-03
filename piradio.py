@@ -5,9 +5,14 @@ import time
 import sys
 import urwid
 import requests
+from requests.adapters import HTTPAdapter, Retry
 import unicodedata
 from collections import defaultdict
 import subprocess
+
+session = requests.Session()
+retries = Retry(total=3, backoff_factor=1, status_forcelist=[502, 503, 504])
+session.mount("https://", HTTPAdapter(max_retries=retries))
 
 default_file_path = "/tmp/geo_json.min.json"
 geojson_url = f"https://radio.garden/api/ara/content/places"
@@ -70,7 +75,8 @@ class Choice(urwid.WidgetWrap):
         self.country = country
 
     def get_stations(self):
-        response = requests.get(f"https://radio.garden/api/ara/content/page/{self.location_id}/channels")
+        response = session.get(f"https://radio.garden/api/ara/content/page/{self.location_id}/channels")
+        if not response.ok: return []
         data = response.json()
         stations = []
         for item in data["data"]["content"][0]["items"]:
@@ -81,7 +87,6 @@ class Choice(urwid.WidgetWrap):
     def list_radios(self, button):
         response = urwid.Text([u'  You chose ', self.caption, u'\n'])
         stations = self.get_stations()
-
         line = urwid.Divider(u'\N{LOWER ONE QUARTER BLOCK}')
         listbox = urwid.ListBox(urwid.SimpleFocusListWalker([
             urwid.AttrMap(urwid.Text([u"\n  ", self.caption]), 'heading'),
@@ -160,12 +165,10 @@ def get_feature(d):
 
 def fetch_geojson_data(url, default_file_path):
     data = read_json_data(default_file_path)
-    if data:
-        import pdb; pdb.set_trace()
-        return data
+    if data: return data
     try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise exception for bad requests
+        response = session.get(url)
+        response.raise_for_status()
         data_parsed = defaultdict(dict)
         rg_json = response.json()
 
@@ -175,16 +178,23 @@ def fetch_geojson_data(url, default_file_path):
             location_id = item['id']
             geom = {'type': 'Point', 'coordinates': [item['geo'][0], item['geo'][1]]}
             data_parsed[country][city] = {"id":location_id, "geometry": geom}
-        with open(default_file_path, "w") as file_open:
-            file_open.write(json.dumps(data_parsed))
+        write_json_data(data_parsed, default_file_path)
         return data_parsed
 
     except requests.exceptions.RequestException as e:
         print("Error fetching GeoJSON data:", e)
-        return read_json_data(default_file-path)
+        return read_json_data(default_file_path)
+
+def write_json_data(data, file_path):
+    try:
+        with open(file_path, "w") as file_open:
+            file_open.write(json.dumps(data))
+    except Exception as e:
+        print(e)
 
 def read_json_data(file_path):
     if not os.path.isfile(file_path): return {}
+    if time.time() - os.stat(file_path).st_ctime > (24*60*60): return {}
     with open(file_path) as file_open:
         return json.load(file_open)
 
