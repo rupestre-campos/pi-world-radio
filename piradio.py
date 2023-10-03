@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import os
 import json
 import time
@@ -59,59 +60,6 @@ class SubMenu(urwid.WidgetWrap):
     def open_menu(self, button):
         top.open_box(self.menu)
 
-class Station(urwid.WidgetWrap):
-    def __init__(self, item):
-        super(Station, self).__init__(
-            MenuButton(item["title"], self.play_radio))
-        self.item = item
-        self.stream_url  = self.compute_stream_url()
-
-    def play_stream(self, key):
-        #print("Hit  / to decrease and * to increase volume" )
-        #print("Hit space to pause, m to mute and q to quit" )
-        try:
-            subprocess.run(["clear"])
-            print(f"Radio name: {self.item['title']}")
-            print(f"Country: {self.item['country']}")
-            print(f"Location: {self.item['location']}")
-            print(f"Position: {self.item['geom']['coordinates']}")
-            print("Keybindings: / to decrease vol, * to increase vol")
-            print("             m to mute, space to pause, arrows to seek stream ")
-            print("Press q to exit")
-            print("#"*200)
-            # Use subprocess to execute the MPlayer command with the stream URL
-            subprocess.run(['mpv',
-                            '--cache-pause-initial=yes',
-                            '--cache-pause=no',
-                            '--demuxer-thread=yes',
-                            '--demuxer-readahead-secs=30',
-                            '--framedrop=vo',
-                            '--sid=1',
-                            '-cache-secs=30',
-                            self.stream_url])
-            subprocess.run(["clear"])
-            print("Sure to quit? press q again, or any other key to return")
-            return 1
-        except Exception as e:
-            print(f"Error: {e}")
-            return 0
-
-    def compute_stream_url(self):
-        channel_id = self.item["href"].split("/")[-1]
-        val = int(time.time() * 1000)
-        return f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
-
-
-    def play_radio(self, button):
-        response = urwid.Text([
-            u'  Selected ', u'\n',
-            self.item["title"], u'\n'
-        ])
-
-        done = MenuButton(u'play', self.play_stream)
-        response_box = urwid.Filler(urwid.Pile([response, done]))
-        top.open_box(urwid.AttrMap(response_box, 'options'))
-
 class Choice(urwid.WidgetWrap):
     def __init__(self, caption, location_id, geom, country):
         super(Choice, self).__init__(
@@ -143,8 +91,62 @@ class Choice(urwid.WidgetWrap):
         top.open_box(self.menu)
 
 
-def exit_program(key):
-    raise urwid.ExitMainLoop()
+class Station(urwid.WidgetWrap):
+    def __init__(self, item):
+        super(Station, self).__init__(
+            MenuButton(item["title"], self.play_radio))
+        self.item = item
+        self.stream_url  = self.compute_stream_url()
+
+    def play_stream(self, key):
+        #print("Hit  / to decrease and * to increase volume" )
+        #print("Hit space to pause, m to mute and q to quit" )
+        try:
+            clear_screen()
+            print(f"Radio name: {self.item['title']}")
+            print(f"Country: {self.item['country']}")
+            print(f"Location: {self.item['location']}")
+            print(f"Position: {self.item['geom']['coordinates']}")
+            print("Keybindings: / to decrease vol, * to increase vol")
+            print("             m to mute, space to pause, arrows to seek stream ")
+            print("Press q to exit")
+            print("#"*200)
+            # Use subprocess to execute the MPlayer command with the stream URL
+            subprocess.run(['mpv',
+                            '--cache-pause-initial=yes',
+                            '--cache-pause=no',
+                            '--demuxer-thread=yes',
+                            '--demuxer-readahead-secs=30',
+                            '--framedrop=vo',
+                            '--sid=1',
+                            '-cache-secs=30',
+                            self.stream_url])
+            clear_screen()
+            print("Sure to quit? press q again, or any other key to return")
+            return 1
+        except Exception as e:
+            print(f"Error: {e}")
+            return 0
+
+    def compute_stream_url(self):
+        channel_id = self.item["href"].split("/")[-1]
+        val = int(time.time() * 1000)
+        return f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
+
+
+    def play_radio(self, button):
+        response = urwid.Text([
+            u'  Selected ', u'\n',
+            self.item["title"], u'\n'
+        ])
+
+        done = MenuButton(u'play', self.play_stream)
+        response_box = urwid.Filler(urwid.Pile([response, done]))
+        top.open_box(urwid.AttrMap(response_box, 'options'))
+
+
+def clear_screen():
+    subprocess.run(["clear"])
 
 def remove_accents(input_str):
     nfkd_form = unicodedata.normalize('NFKD', input_str)
@@ -157,6 +159,10 @@ def get_feature(d):
     return feature
 
 def fetch_geojson_data(url, default_file_path):
+    data = read_json_data(default_file_path)
+    if data:
+        import pdb; pdb.set_trace()
+        return data
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raise exception for bad requests
@@ -169,14 +175,22 @@ def fetch_geojson_data(url, default_file_path):
             location_id = item['id']
             geom = {'type': 'Point', 'coordinates': [item['geo'][0], item['geo'][1]]}
             data_parsed[country][city] = {"id":location_id, "geometry": geom}
+        with open(default_file_path, "w") as file_open:
+            file_open.write(json.dumps(data_parsed))
         return data_parsed
 
     except requests.exceptions.RequestException as e:
         print("Error fetching GeoJSON data:", e)
-        return None
+        return read_json_data(default_file-path)
+
+def read_json_data(file_path):
+    if not os.path.isfile(file_path): return {}
+    with open(file_path) as file_open:
+        return json.load(file_open)
 
 def exit_on_q(key):
     if key in ('q', 'Q'):
+        clear_screen()
         raise urwid.ExitMainLoop()
 
 if __name__=="__main__":
