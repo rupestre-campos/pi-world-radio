@@ -5,15 +5,16 @@ import time
 import sys
 import urwid
 import requests
-from requests.adapters import HTTPAdapter, Retry
 import unicodedata
-from collections import defaultdict
 import subprocess
+from collections import defaultdict
+from requests.adapters import HTTPAdapter, Retry
 
 session = requests.Session()
 retries = Retry(total=3, backoff_factor=1, status_forcelist=[502, 503, 504])
 session.mount("https://", HTTPAdapter(max_retries=retries))
 
+TIMEOUT = 2
 default_file_path = "/tmp/geo_json.min.json"
 geojson_url = f"https://radio.garden/api/ara/content/places"
 
@@ -26,11 +27,11 @@ palette = [
     ('focus line', 'black', 'dark red'),
     ('focus options', 'black', 'light gray'),
     ('selected', 'white', 'dark blue')]
+
 focus_map = {
     'heading': 'focus heading',
     'options': 'focus options',
     'line': 'focus line'}
-
 
 
 class HorizontalBoxes(urwid.Columns):
@@ -44,12 +45,14 @@ class HorizontalBoxes(urwid.Columns):
             self.options('given', 24)))
         self.focus_position = len(self.contents) - 1
 
+
 class MenuButton(urwid.Button):
     def __init__(self, caption, callback):
         super(MenuButton, self).__init__("")
         urwid.connect_signal(self, 'click', callback)
         self._w = urwid.AttrMap(urwid.SelectableIcon(
             [u'  \N{BULLET} ', caption], 2), None, 'selected')
+
 
 class SubMenu(urwid.WidgetWrap):
     def __init__(self, caption, choices):
@@ -65,9 +68,40 @@ class SubMenu(urwid.WidgetWrap):
     def open_menu(self, button):
         top.open_box(self.menu)
 
-class Choice(urwid.WidgetWrap):
+
+class Country(urwid.WidgetWrap):
+    def __init__(self, caption, locations):
+        super(Country, self).__init__(MenuButton(
+            [caption, u"\N{HORIZONTAL ELLIPSIS}"], self.list_locations))
+        self.caption = caption
+        self.locations = locations
+
+    def get_locations(self):
+        locations = []
+        for location, item in self.locations.items():
+            locations.append(
+                Location(
+                    location,
+                    item.get("id"),
+                    item.get("geometry"),
+                    self.caption))
+        return locations
+
+    def list_locations(self, button):
+        response = urwid.Text([u'  Locations in ', self.caption, u'\n'])
+        locations = self.get_locations()
+        line = urwid.Divider(u'\N{LOWER ONE QUARTER BLOCK}')
+        listbox = urwid.ListBox(urwid.SimpleFocusListWalker([
+            urwid.AttrMap(urwid.Text([u"\n  ", self.caption]), 'heading'),
+            urwid.AttrMap(line, 'line'),
+            urwid.Divider()] + locations + [urwid.Divider()]))
+        self.menu = urwid.AttrMap(listbox, 'options')
+        top.open_box(self.menu)
+
+
+class Location(urwid.WidgetWrap):
     def __init__(self, caption, location_id, geom, country):
-        super(Choice, self).__init__(
+        super(Location, self).__init__(
             MenuButton(caption, self.list_radios))
         self.caption = caption
         self.location_id = location_id
@@ -75,7 +109,10 @@ class Choice(urwid.WidgetWrap):
         self.country = country
 
     def get_stations(self):
-        response = session.get(f"https://radio.garden/api/ara/content/page/{self.location_id}/channels")
+        response = session.get(
+            f"https://radio.garden/api/ara/content/page/{self.location_id}/channels",
+            timeout=TIMEOUT
+        )
         if not response.ok: return []
         data = response.json()
         stations = []
@@ -104,8 +141,6 @@ class Station(urwid.WidgetWrap):
         self.stream_url  = self.compute_stream_url()
 
     def play_stream(self, key):
-        #print("Hit  / to decrease and * to increase volume" )
-        #print("Hit space to pause, m to mute and q to quit" )
         try:
             clear_screen()
             print(f"Radio name: {self.item['title']}")
@@ -138,13 +173,11 @@ class Station(urwid.WidgetWrap):
         val = int(time.time() * 1000)
         return f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
 
-
     def play_radio(self, button):
         response = urwid.Text([
             u'  Selected ', u'\n',
             self.item["title"], u'\n'
         ])
-
         done = MenuButton(u'play', self.play_stream)
         response_box = urwid.Filler(urwid.Pile([response, done]))
         top.open_box(urwid.AttrMap(response_box, 'options'))
@@ -160,14 +193,20 @@ def remove_accents(input_str):
 
 def get_feature(d):
     feature = {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [d['geo'][0], d['geo'][1]]}}
-    feature['properties'] = {'title': remove_accents(d['title']), 'country': remove_accents(d['country']), 'location_id': d['id'], 'lng': d['geo'][0], 'lat': d['geo'][1]}
+    feature['properties'] = {
+        'title': remove_accents(d['title']),
+        'country': remove_accents(d['country']),
+        'location_id': d['id'],
+        'lng': d['geo'][0],
+        'lat': d['geo'][1]
+    }
     return feature
 
 def fetch_geojson_data(url, default_file_path):
     data = read_json_data(default_file_path)
     if data: return data
     try:
-        response = session.get(url)
+        response = session.get(url, timeout=TIMEOUT)
         response.raise_for_status()
         data_parsed = defaultdict(dict)
         rg_json = response.json()
@@ -183,7 +222,7 @@ def fetch_geojson_data(url, default_file_path):
 
     except requests.exceptions.RequestException as e:
         print("Error fetching GeoJSON data:", e)
-        return read_json_data(default_file_path)
+        return read_json_data(default_file_path, error=True)
 
 def write_json_data(data, file_path):
     try:
@@ -192,9 +231,9 @@ def write_json_data(data, file_path):
     except Exception as e:
         print(e)
 
-def read_json_data(file_path):
+def read_json_data(file_path, error=False):
     if not os.path.isfile(file_path): return {}
-    if time.time() - os.stat(file_path).st_ctime > (24*60*60): return {}
+    if time.time() - os.stat(file_path).st_ctime > (24*60*60) and not error: return {}
     with open(file_path) as file_open:
         return json.load(file_open)
 
@@ -210,16 +249,10 @@ if __name__=="__main__":
         sys.exit()
 
     menu_top = SubMenu(u'Main Menu', [
-        SubMenu(
+        Country(
             country,
-            [
-                Choice(
-                    city,
-                    data_parsed[country][city]["id"],
-                    data_parsed[country][city]["geometry"],
-                    country
-                ) for city in sorted(data_parsed[country].keys())])
-        for country in sorted(data_parsed.keys())
+            locations)
+        for country, locations in sorted(data_parsed.items())
     ])
     top = HorizontalBoxes()
     top.open_box(menu_top.menu)
