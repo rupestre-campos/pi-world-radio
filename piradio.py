@@ -11,10 +11,13 @@ from collections import defaultdict
 from requests.adapters import HTTPAdapter, Retry
 
 session = requests.Session()
-retries = Retry(total=3, backoff_factor=1, status_forcelist=[502, 503, 504])
+retries = Retry(total=2, backoff_factor=1, status_forcelist=[502, 503, 504])
 session.mount("https://", HTTPAdapter(max_retries=retries))
 
-TIMEOUT = 2
+READ_TIMEOUT = 1
+CONN_TIMEOUT = 2
+TIMEOUT = (CONN_TIMEOUT, READ_TIMEOUT)
+
 default_file_path = "/tmp/geo_json.min.json"
 geojson_url = f"https://radio.garden/api/ara/content/places"
 
@@ -111,10 +114,13 @@ class Location(urwid.WidgetWrap):
         self.country = country
 
     def get_stations(self):
-        response = session.get(
-            f"https://radio.garden/api/ara/content/page/{self.location_id}/channels",
-            timeout=TIMEOUT
-        )
+        try:
+            response = session.get(
+                f"https://radio.garden/api/ara/content/page/{self.location_id}/channels",
+                timeout=TIMEOUT
+            )
+        except Exception as e:
+            return []
         if not response.ok: return []
         data = response.json()
         stations = []
