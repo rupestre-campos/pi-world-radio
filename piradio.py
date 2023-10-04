@@ -33,6 +33,8 @@ focus_map = {
     'options': 'focus options',
     'line': 'focus line'}
 
+COLUMN_SIZE = 29
+ROW_SIZE = 100
 
 class HorizontalBoxes(urwid.Columns):
     def __init__(self):
@@ -42,7 +44,7 @@ class HorizontalBoxes(urwid.Columns):
         if self.contents:
             del self.contents[self.focus_position + 1:]
         self.contents.append((urwid.AttrMap(box, 'options', focus_map),
-            self.options('given', 24)))
+            self.options('given' , COLUMN_SIZE)))
         self.focus_position = len(self.contents) - 1
 
 
@@ -257,5 +259,5 @@ if __name__=="__main__":
     ])
     top = HorizontalBoxes()
     top.open_box(menu_top.menu)
-    urwid.MainLoop(urwid.Filler(top, 'middle', 10), palette, unhandled_input=exit_on_q).run()
+    urwid.MainLoop(urwid.Filler(top, 'middle', ROW_SIZE), palette, unhandled_input=exit_on_q).run()
 
