@@ -10,13 +10,12 @@ import subprocess
 from collections import defaultdict
 from requests.adapters import HTTPAdapter, Retry
 
-session = requests.Session()
-retries = Retry(total=2, backoff_factor=1, status_forcelist=[502, 503, 504])
-session.mount("https://", HTTPAdapter(max_retries=retries))
-
 READ_TIMEOUT = 1
 CONN_TIMEOUT = 2
 TIMEOUT = (CONN_TIMEOUT, READ_TIMEOUT)
+COLUMN_SIZE = 29
+ROW_SIZE = 100
+
 
 default_file_path = "/tmp/geo_json.min.json"
 geojson_url = f"https://radio.garden/api/ara/content/places"
@@ -36,8 +35,10 @@ focus_map = {
     'options': 'focus options',
     'line': 'focus line'}
 
-COLUMN_SIZE = 29
-ROW_SIZE = 100
+session = requests.Session()
+retries = Retry(total=2, backoff_factor=1, status_forcelist=[502, 503, 504])
+session.mount("https://", HTTPAdapter(max_retries=retries))
+
 
 class HorizontalBoxes(urwid.Columns):
     def __init__(self):
@@ -93,11 +94,10 @@ class Country(urwid.WidgetWrap):
         return locations
 
     def list_locations(self, button):
-        response = urwid.Text([u'  Locations in ', self.caption, u'\n'])
         locations = self.get_locations()
         line = urwid.Divider(u'\N{LOWER ONE QUARTER BLOCK}')
         listbox = urwid.ListBox(urwid.SimpleFocusListWalker([
-            urwid.AttrMap(urwid.Text([u"\n  ", self.caption]), 'heading'),
+            urwid.AttrMap(urwid.Text([u"\n Select Location in  ", self.caption]), 'heading'),
             urwid.AttrMap(line, 'line'),
             urwid.Divider()] + locations + [urwid.Divider()]))
         self.menu = urwid.AttrMap(listbox, 'options')
@@ -107,7 +107,7 @@ class Country(urwid.WidgetWrap):
 class Location(urwid.WidgetWrap):
     def __init__(self, caption, location_id, geom, country):
         super(Location, self).__init__(
-            MenuButton(caption, self.list_radios))
+            MenuButton(caption, self.list_stations))
         self.caption = caption
         self.location_id = location_id
         self.geom = geom
@@ -129,12 +129,11 @@ class Location(urwid.WidgetWrap):
             stations.append(Station(item["title"], item))
         return stations
 
-    def list_radios(self, button):
-        response = urwid.Text([u'  You chose ', self.caption, u'\n'])
+    def list_stations(self, button):
         stations = self.get_stations()
         line = urwid.Divider(u'\N{LOWER ONE QUARTER BLOCK}')
         listbox = urwid.ListBox(urwid.SimpleFocusListWalker([
-            urwid.AttrMap(urwid.Text([u"\n  ", self.caption]), 'heading'),
+            urwid.AttrMap(urwid.Text([u"\n Select Station in ", self.caption]), 'heading'),
             urwid.AttrMap(line, 'line'),
             urwid.Divider()] + stations + [urwid.Divider()]))
         self.menu = urwid.AttrMap(listbox, 'options')
@@ -185,7 +184,7 @@ class Station(urwid.WidgetWrap):
     def play_radio(self, button):
         response = urwid.Text([
             u'  Selected ', u'\n',
-            self.item["title"], u'\n'
+            self.caption, u'\n'
         ])
         done = MenuButton(u'play', self.play_stream)
         response_box = urwid.Filler(urwid.Pile([response, done]))
@@ -257,7 +256,7 @@ if __name__=="__main__":
         print("error getting data")
         sys.exit()
 
-    menu_top = SubMenu(u'Main Menu', [
+    menu_top = SubMenu(u'Select Country:', [
         Country(
             country,
             locations)
