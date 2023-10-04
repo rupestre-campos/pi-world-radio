@@ -78,7 +78,7 @@ class Country(urwid.WidgetWrap):
 
     def get_locations(self):
         locations = []
-        for location, item in self.locations.items():
+        for location, item in sorted(self.locations.items()):
             locations.append(
                 Location(
                     location,
@@ -116,9 +116,9 @@ class Location(urwid.WidgetWrap):
         if not response.ok: return []
         data = response.json()
         stations = []
-        for item in data["data"]["content"][0]["items"]:
+        for item in sorted(data["data"]["content"][0]["items"], key=lambda item: item.get("title")):
             item.update({"country": self.country, "location": self.caption, "geom": self.geom})
-            stations.append(Station(item))
+            stations.append(Station(item["title"], item))
         return stations
 
     def list_radios(self, button):
@@ -134,10 +134,11 @@ class Location(urwid.WidgetWrap):
 
 
 class Station(urwid.WidgetWrap):
-    def __init__(self, item):
+    def __init__(self, caption, item):
         super(Station, self).__init__(
-            MenuButton(item["title"], self.play_radio))
+            MenuButton(caption, self.play_radio))
         self.item = item
+        self.caption = caption
         self.stream_url  = self.compute_stream_url()
 
     def play_stream(self, key):
