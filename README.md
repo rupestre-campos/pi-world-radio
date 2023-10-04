@@ -7,19 +7,24 @@ A fork from original project pi-world-radio adapted to run with python on the te
 being suitable for very old hardware. Tested in a pentium 4 single core, 1.5Gb RAM from 2000's era.
 
 ##Installation
-install mpv with
+install mpv for stream play with
 
-sudo apt install mpv
+sudo apt install mpv python3-venv
 
-then python requirements with
+then install python requirements with
+python3 -m venv .venv
+source .venv/bin/activate
 
 python3 -m pip install -r requirements.txt
+
 
 then run and have fun
 
 python3 radio_cli.py
 
-iteractive version with
+
+try also a version with terminal UI
+
 python3 piradio.py
 
 Still work in progress. Feedback and help welcome.
