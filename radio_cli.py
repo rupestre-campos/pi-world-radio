@@ -83,8 +83,9 @@ def list_stations(geojson_data, selected_country, selected_city):
     return stations_dict
 
 def play_stream(stream_url):
-    print("Hit  / to decrease and * to increase volume" )
-    print("Hit space to pause\n m to mute\n q to quit" )
+    print("Player Control")
+    print(" / decrease volume\n * increase volume" )
+    print(" space to pause\n m to mute\n q to quit" )
     try:
         # Use subprocess to execute the MPlayer command with the stream URL
         subprocess.run(['mpv',
@@ -175,7 +176,10 @@ def main():
             channel_id = station_data["href"].split("/")[-1]
             val = int(time.time() * 1000)
             stream_url = f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
-            print(f"Streaming {selected_station}")
+            clear()
+            print(f"Country: {selected_country}")
+            print(f"Location: {selected_city}")
+            print(f"Station: {selected_station}")
             play_stream(stream_url)
             clear()
 
