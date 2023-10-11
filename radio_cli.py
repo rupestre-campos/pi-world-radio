@@ -7,9 +7,12 @@ import time
 import json
 import unicodedata
 import os
+import random
 
 default_file_path = "/tmp/geo_json.min.json"
 geojson_url = f"https://radio.garden/api/ara/content/places"
+TIMEOUT_CON = 2
+TIMEOUT_FETCH = 2
 
 def clear():
     try:
@@ -29,7 +32,7 @@ def get_feature(d):
 
 def fetch_geojson_data(url, default_file_path):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=(TIMEOUT_CON, TIMEOUT_FETCH))
         response.raise_for_status()  # Raise exception for bad requests
         geo_json = {'type': 'FeatureCollection', 'features': []}
         rg_json = response.json()
@@ -64,6 +67,7 @@ def list_cities(geojson_data, selected_country):
         if country == selected_country:
             city = feature['properties']['title']
             cities.append(city)
+            break
     return sorted(cities)
 
 def list_stations(geojson_data, selected_country, selected_city):
@@ -76,7 +80,8 @@ def list_stations(geojson_data, selected_country, selected_city):
             response = requests.get(f"https://radio.garden/api/ara/content/page/{station}/channels")
             data = response.json()
             for item in data["data"]["content"][0]["items"]:
-                stations_dict[item["title"]] = item
+                stations_dict[remove_accents(item["title"])] = item
+            break
     return stations_dict
 
 def play_stream(stream_url):
@@ -96,42 +101,79 @@ def play_stream(stream_url):
     except Exception as e:
         print(f"Error: {e}")
 
+def create_user_selection_map():
+    return {
+         "country": "",
+         "city": "",
+         "station": ""
+    }
+
 def main():
     clear()
     print("Welcome to radio.garden in a cli")
     geojson_data = fetch_geojson_data(geojson_url, default_file_path)
 
-    if geojson_data:
-        countries = list_countries(geojson_data)
+    if not geojson_data:
+        print("Couldn't get data from internet")
+        return None
+    user_selection = create_user_selection_map()
+    countries = list_countries(geojson_data)
+    while True:
         country_completer = WordCompleter(countries, ignore_case=True)
-        print(" Hit Tab for a complete list or just start typing the names")
-        selected_country = prompt('Select a country: ', completer=country_completer)
+        print("Instructions:\n Search as you type")
+        print(" tab for a complete list\n enter for last used or random one if none\n send r to shuffle again")
+        print("#"*25)
+        selected_country = prompt("Select a country:", completer=country_completer)
+
+        if selected_country == "" and user_selection["country"]!="":
+            selected_country = user_selection["country"]
+        if (selected_country == "" and user_selection["country"]=="")\
+           or selected_country.lower() == "r" :
+            selected_country = random.choices(countries)[0]
         if selected_country not in countries:
-            print(" Country not in list, exiting...")
-            return None
+            print(" Country not in list, try again...")
+            continue
+        user_selection["country"] = selected_country
+        print(selected_country)
+
         cities = list_cities(geojson_data, selected_country)
         city_completer = WordCompleter(cities, ignore_case=True)
-        selected_city = prompt('Select a city: ', completer=city_completer)
+        selected_city = prompt('Select a location: ', completer=city_completer)
+        user_selection_city_in_list = user_selection["city"] in cities
+        if selected_city == "" and user_selection_city_in_list:
+            selected_city = user_selection["city"]
+        if (selected_city == "" and not user_selection_city_in_list)\
+            or selected_city.lower() == "r":
+            selected_city = random.choices(cities)[0]
         if selected_city not in cities:
-            print("City not in list, exiting...")
-            return None
+            print("Location not in list, try again...")
+            continue
+        user_selection["city"] = selected_city
+        print(selected_city)
 
         stations_dict = list_stations(geojson_data, selected_country, selected_city)
-        station_names = list(stations_dict.keys())
+        station_names = sorted(list(stations_dict.keys()))
         station_completer = WordCompleter(station_names, ignore_case=True)
+        selected_station = prompt("Select a station:", completer=station_completer)
+        user_selection_station_in_list = user_selection["station"] in stations_dict
+        if selected_station == "" and user_selection_station_in_list:
+            selected_station = user_selection["station"]
+        if (selected_station == "" and not user_selection_station_in_list)\
+            or selected_station.lower() == "r":
+            selected_station = random.choices(station_names)[0]
+        if selected_station not in stations_dict:
+            print(" Station not in list, try again...")
+            continue
+        user_selection["station"] = selected_station
+        print(selected_station)
 
-        while True:
-            selected_station = prompt('Select a station: ', completer=station_completer)
-            if selected_station not in station_names:
-                print("Invalid station name. Please try again.")
-                continue
-            station_data = stations_dict[selected_station]
-            channel_id = station_data["href"].split("/")[-1]
-            val = int(time.time() * 1000)
-            stream_url = f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
-            print(f"Streaming {selected_station}")
-            play_stream(stream_url)
-
+        station_data = stations_dict[selected_station]
+        channel_id = station_data["href"].split("/")[-1]
+        val = int(time.time() * 1000)
+        stream_url = f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
+        print(f"Streaming {selected_station}")
+        play_stream(stream_url)
+        clear()
 
 if __name__ == "__main__":
     main()
