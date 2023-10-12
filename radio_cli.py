@@ -78,7 +78,9 @@ def list_stations(geojson_data, selected_country, selected_city):
         city = feature['properties']['title']
         if country == selected_country and city == selected_city:
             station = feature['properties']['location_id']
-            response = requests.get(f"https://radio.garden/api/ara/content/page/{station}/channels", timeout=(10,10))
+            response = requests.get(
+                f"https://radio.garden/api/ara/content/page/{station}/channels",
+                timeout=(TIMEOUT_CON,TIMEOUT_FETCH))
             data = response.json()
             for item in data["data"]["content"][0]["items"]:
                 stations_dict[remove_accents(item["page"]["title"])] = item["page"]

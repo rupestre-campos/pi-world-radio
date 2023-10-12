@@ -22,10 +22,5 @@ then run and have fun
 
 python3 radio_cli.py
 
-
-try also a version with terminal UI
-
-python3 piradio.py
-
 Still work in progress. Feedback and help welcome.
 
