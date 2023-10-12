@@ -11,8 +11,8 @@ import random
 
 default_file_path = "/tmp/geo_json.min.json"
 geojson_url = f"https://radio.garden/api/ara/content/places"
-TIMEOUT_CON = 2
-TIMEOUT_FETCH = 2
+TIMEOUT_CON = 10
+TIMEOUT_FETCH = 10
 
 def clear():
     try:
@@ -44,6 +44,8 @@ def fetch_geojson_data(url, default_file_path):
         return geo_json
 
     except requests.exceptions.RequestException as e:
+        print(e)
+        #import pdb; pdb.set_trace()
         if os.path.exists(default_file_path):
             with open(default_file_path) as file_open:
                 geo_json = json.load(file_open)
@@ -76,10 +78,10 @@ def list_stations(geojson_data, selected_country, selected_city):
         city = feature['properties']['title']
         if country == selected_country and city == selected_city:
             station = feature['properties']['location_id']
-            response = requests.get(f"https://radio.garden/api/ara/content/page/{station}/channels")
+            response = requests.get(f"https://radio.garden/api/ara/content/page/{station}/channels", timeout=(10,10))
             data = response.json()
             for item in data["data"]["content"][0]["items"]:
-                stations_dict[remove_accents(item["title"])] = item
+                stations_dict[remove_accents(item["page"]["title"])] = item["page"]
     return stations_dict
 
 def play_stream(stream_url):
@@ -173,7 +175,7 @@ def main():
             print(selected_station)
 
             station_data = stations_dict[selected_station]
-            channel_id = station_data["href"].split("/")[-1]
+            channel_id = station_data["url"].split("/")[-1]
             val = int(time.time() * 1000)
             stream_url = f"https://radio.garden/api/ara/content/listen/{channel_id}/channel.mp3?{val}"
             clear()
@@ -190,7 +192,7 @@ def main():
 
         except Exception as e:
             clear()
-            print("Error")
+            print(f"Error {e}")
             return None
 
 if __name__ == "__main__":
