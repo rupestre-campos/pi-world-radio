@@ -1,0 +1,4 @@
+sudo apt install gdal-bin libgdal-dev python3-gdal
+
+python3 -m pip install Shapely==1.5.6
+python3 -m pip install gj2ascii

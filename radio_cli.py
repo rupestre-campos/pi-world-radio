@@ -9,10 +9,21 @@ import unicodedata
 import os
 import random
 
-default_file_path = "/tmp/geo_json.min.json"
+is_history_enabled = True
+HOME_DIR = os.getenv("HOME")
+DEFAULT_DIR = os.path.join(HOME_DIR, ".radio_cli")
+
+DEFAULT_DATA_FILE_PATH = os.path.join(DEFAULT_DIR,"geo_json.min.json")
+DEFAULT_HISTORY_FILE_PATH = os.path.join(DEFAULT_DIR, "history.json")
 geojson_url = f"https://radio.garden/api/ara/content/places"
 TIMEOUT_CON = 10
 TIMEOUT_FETCH = 10
+
+def make_default_dir():
+    try:
+        os.mkdir(DEFAULT_DIR)
+    except Exception as e:
+        pass
 
 def clear():
     try:
@@ -27,7 +38,12 @@ def remove_accents(input_str):
 
 def get_feature(d):
     feature = {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [d['geo'][0], d['geo'][1]]}}
-    feature['properties'] = {'title': remove_accents(d['title']), 'country': remove_accents(d['country']), 'location_id': d['id'], 'lng': d['geo'][0], 'lat': d['geo'][1]}
+    feature['properties'] = {
+        'title': d['title'],
+        'country': d['country'],
+        'location_id': d['id'],
+        'lng': d['geo'][0], 'lat': d['geo'][1]
+    }
     return feature
 
 def fetch_geojson_data(url, default_file_path):
@@ -111,25 +127,66 @@ def create_user_selection_map():
          "station": ""
     }
 
+def read_history(default_file_path):
+    data = {}
+    if not os.path.exists(default_file_path):
+        return data
+    with open(default_file_path, "r") as file_open:
+        for line_str in file_open:
+            line = json.loads(line_str)
+            if not line["country"] in data:
+                data[line["country"]] = {}
+            if not line["location"] in data[line["country"]]:
+                data[line["country"]][line["location"]] = []
+            data[line["country"]][line["location"]].append(line["station"])
+    return data
+
+def write_history(default_file_path, selected_country, selected_city, selected_station):
+    with open(default_file_path, "a") as file_open:
+        file_open.write(json.dumps({
+            "country": selected_country,
+            "location": selected_city,
+            "station": selected_station
+        }))
+        file_open.write("\n")
+
 def main():
     clear()
+    make_default_dir()
     print("Welcome to radio.garden in a cli")
-    geojson_data = fetch_geojson_data(geojson_url, default_file_path)
+    geojson_data = fetch_geojson_data(geojson_url, DEFAULT_DATA_FILE_PATH)
 
     if not geojson_data:
         print("Couldn't get data from internet")
         return None
     user_selection = create_user_selection_map()
-    countries = list_countries(geojson_data)
-    country_completer = WordCompleter(countries, ignore_case=True)
 
     run_until_complete = True
     while run_until_complete:
         try:
+
             print("Instructions:\n Search as you type")
             print(" tab for a complete list\n enter for last used or random one if none\n send r to shuffle again")
             print(" ctrl + c to exit")
             print("#"*25)
+
+
+            user_browse_history = False
+            if is_history_enabled:
+                history = read_history(DEFAULT_HISTORY_FILE_PATH)
+
+                browse_history = input("Browse history? [y/n]")
+
+                if browse_history == "y":
+                    user_browse_history = True
+
+            if user_browse_history:
+                countries = sorted(history.keys())
+            else:
+                countries = list_countries(geojson_data)
+
+            country_completer = WordCompleter(countries, ignore_case=True)
+
             selected_country = prompt("Select a country:", completer=country_completer)
 
             if selected_country == "" and user_selection["country"]!="":
@@ -143,8 +200,10 @@ def main():
                 continue
             user_selection["country"] = selected_country
             print(selected_country)
-
-            cities = list_cities(geojson_data, selected_country)
+            if user_browse_history:
+                cities = sorted(history[selected_country].keys())
+            else:
+                cities = list_cities(geojson_data, selected_country)
             city_completer = WordCompleter(cities, ignore_case=True)
             selected_city = prompt('Select a location: ', completer=city_completer)
             user_selection_city_in_list = user_selection["city"] in cities
@@ -161,7 +220,10 @@ def main():
             print(selected_city)
 
             stations_dict = list_stations(geojson_data, selected_country, selected_city)
-            station_names = sorted(list(stations_dict.keys()))
+            if user_browse_history:
+                station_names = sorted(history[selected_country][selected_city])
+            else:
+                station_names = sorted(list(stations_dict.keys()))
             station_completer = WordCompleter(station_names, ignore_case=True)
             selected_station = prompt("Select a station:", completer=station_completer)
             user_selection_station_in_list = user_selection["station"] in stations_dict
@@ -184,6 +246,9 @@ def main():
             print(f"Country: {selected_country}")
             print(f"Location: {selected_city}")
             print(f"Station: {selected_station}")
+            if is_history_enabled \
+               and not selected_station in history.get(selected_country,{}).get(selected_city,{}):
+                write_history(DEFAULT_HISTORY_FILE_PATH,selected_country, selected_city, selected_station)
             play_stream(stream_url)
             clear()
 
