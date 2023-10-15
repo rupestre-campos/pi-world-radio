@@ -1,20 +1,22 @@
 #!/usr/bin/python3
-import requests
-from prompt_toolkit import prompt
-from prompt_toolkit.completion import WordCompleter
-import subprocess
+import os
 import time
 import json
-import unicodedata
-import os
 import random
+import requests
+import subprocess
+import unicodedata
+from prompt_toolkit import prompt
+from prompt_toolkit.completion import WordCompleter
 
-is_history_enabled = True
+is_history_favorites_enabled = True
 HOME_DIR = os.getenv("HOME")
 DEFAULT_DIR = os.path.join(HOME_DIR, ".radio_cli")
 
-DEFAULT_DATA_FILE_PATH = os.path.join(DEFAULT_DIR,"geo_json.min.json")
+DEFAULT_DATA_FILE_PATH = os.path.join(DEFAULT_DIR,"radios.geojson")
 DEFAULT_HISTORY_FILE_PATH = os.path.join(DEFAULT_DIR, "history.json")
+DEFAULT_FAVORITES_FILE_PATH = os.path.join(DEFAULT_DIR, "favorites.json")
+
 geojson_url = f"https://radio.garden/api/ara/content/places"
 TIMEOUT_CON = 10
 TIMEOUT_FETCH = 10
@@ -127,7 +129,7 @@ def create_user_selection_map():
          "station": ""
     }
 
-def read_history(default_file_path):
+def read_stations(default_file_path):
     data = {}
     if not os.path.exists(default_file_path):
         return data
@@ -141,7 +143,7 @@ def read_history(default_file_path):
             data[line["country"]][line["location"]].append(line["station"])
     return data
 
-def write_history(default_file_path, selected_country, selected_city, selected_station):
+def write_stations(default_file_path, selected_country, selected_city, selected_station):
     with open(default_file_path, "a") as file_open:
         file_open.write(json.dumps({
             "country": selected_country,
@@ -169,21 +171,28 @@ def main():
             print(" tab for a complete list\n enter for last used or random one if none\n send r to shuffle again")
             print(" ctrl + c to exit")
             print("#"*25)
+            countries = list_countries(geojson_data)
 
 
-            user_browse_history = False
-            if is_history_enabled:
-                history = read_history(DEFAULT_HISTORY_FILE_PATH)
+            if is_history_favorites_enabled:
+                user_browse_history = False
+                user_browse_favorites = False
 
-                browse_history = input("Browse history? [y/n]")
+                history = read_stations(DEFAULT_HISTORY_FILE_PATH)
+                favorites = read_stations(DEFAULT_FAVORITES_FILE_PATH)
 
-                if browse_history == "y":
-                    user_browse_history = True
+                browse_history_favorites = input("Browse history or favorites? [h/f/n]")
+                browse_history_favorites = browse_history_favorites.strip().lower()
 
-            if user_browse_history:
-                countries = sorted(history.keys())
-            else:
-                countries = list_countries(geojson_data)
+                if browse_history_favorites in ["h","f"]:
+                    if browse_history_favorites == "h":
+                        user_browse_history = True
+                        countries = sorted(history.keys())
+
+                    else:
+                        user_browse_favorites = True
+                        countries = sorted(favorites.keys())
+
 
             country_completer = WordCompleter(countries, ignore_case=True)
 
@@ -192,7 +201,7 @@ def main():
             if selected_country == "" and user_selection["country"]!="":
                 selected_country = user_selection["country"]
             if (selected_country == "" and user_selection["country"]=="")\
-               or selected_country.lower() == "r" :
+               or selected_country.strip().lower() == "r" :
                 selected_country = random.choices(countries)[0]
             if selected_country not in countries:
                 print(" Country not in list, try again...")
@@ -202,6 +211,8 @@ def main():
             print(selected_country)
             if user_browse_history:
                 cities = sorted(history[selected_country].keys())
+            elif user_browse_favorites:
+                cities = sorted(favorites[selected_country].keys())
             else:
                 cities = list_cities(geojson_data, selected_country)
             city_completer = WordCompleter(cities, ignore_case=True)
@@ -210,7 +221,7 @@ def main():
             if selected_city == "" and user_selection_city_in_list:
                 selected_city = user_selection["city"]
             if (selected_city == "" and not user_selection_city_in_list)\
-                or selected_city.lower() == "r":
+                or selected_city.strip().lower() == "r":
                 selected_city = random.choices(cities)[0]
             if selected_city not in cities:
                 print("Location not in list, try again...")
@@ -222,6 +233,8 @@ def main():
             stations_dict = list_stations(geojson_data, selected_country, selected_city)
             if user_browse_history:
                 station_names = sorted(history[selected_country][selected_city])
+            elif user_browse_favorites:
+                station_names = sorted(favorites[selected_country][selected_city])
             else:
                 station_names = sorted(list(stations_dict.keys()))
             station_completer = WordCompleter(station_names, ignore_case=True)
@@ -246,11 +259,16 @@ def main():
             print(f"Country: {selected_country}")
             print(f"Location: {selected_city}")
             print(f"Station: {selected_station}")
-            if is_history_enabled \
+            if is_history_favorites_enabled \
                and not selected_station in history.get(selected_country,{}).get(selected_city,{}):
-                write_history(DEFAULT_HISTORY_FILE_PATH,selected_country, selected_city, selected_station)
+                write_stations(DEFAULT_HISTORY_FILE_PATH,selected_country, selected_city, selected_station)
             play_stream(stream_url)
             clear()
+            if is_history_favorites_enabled \
+               and not selected_station in favorites.get(selected_country,{}).get(selected_city,{}):
+                add_to_favorites = input(f"Add to favorites? [y/n]\n{selected_country}\n{selected_city}\n{selected_station}\n")
+                if add_to_favorites.strip().lower() == "y":
+                    write_stations(DEFAULT_FAVORITES_FILE_PATH,selected_country, selected_city, selected_station)
 
         except KeyboardInterrupt as e:
             clear()
