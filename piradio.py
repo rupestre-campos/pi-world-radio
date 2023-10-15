@@ -113,15 +113,8 @@ def play_stream(stream_url):
         # Use subprocess to execute the MPlayer command with the stream URL
         subprocess.run(['mpv',
                         '--no-video',
-                        '--display-tags=icy-title',
+                        '--profile=low-latency',
                         f'--volume={volume}',
-                        '--audio-buffer=0',
-                        '--vd-lavc-threads=1',
-                        '--cache-pause=no',
-                        '--demuxer-lavf-o-add=fflags=+nobuffer',
-                        '--demuxer-lavf-analyzeduration=0.1',
-                        '--interpolation=no',
-                        '--stream-buffer-size=4k',
                         stream_url])
     except Exception as e:
         print(f"Error: {e}")
