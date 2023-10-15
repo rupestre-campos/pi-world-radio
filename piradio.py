@@ -108,7 +108,7 @@ def list_stations(geojson_data, selected_country, selected_city):
 def play_stream(stream_url):
     print("Player Control")
     print("/ decrease volume\n* increase volume" )
-    print("space pause\nm mute\n q quit" )
+    print("space pause\nm mute\nq exit to main menu" )
     try:
         # Use subprocess to execute the MPlayer command with the stream URL
         subprocess.run(['mpv',
