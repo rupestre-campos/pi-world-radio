@@ -9,6 +9,7 @@ import unicodedata
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter
 
+volume = 50
 is_history_favorites_enabled = True
 HOME_DIR = os.getenv("HOME")
 DEFAULT_DIR = os.path.join(HOME_DIR, ".radio_cli")
@@ -106,21 +107,27 @@ def list_stations(geojson_data, selected_country, selected_city):
 
 def play_stream(stream_url):
     print("Player Control")
-    print(" / decrease volume\n * increase volume" )
-    print(" space to pause\n m to mute\n q to quit" )
+    print("/ decrease volume\n* increase volume" )
+    print("space pause\nm mute\n q quit" )
     try:
         # Use subprocess to execute the MPlayer command with the stream URL
         subprocess.run(['mpv',
-                        '--cache-pause-initial=yes',
+                        '--no-video',
+                        '--display-tags=icy-title',
+                        f'--volume={volume}',
+                        '--audio-buffer=0',
+                        '--vd-lavc-threads=1',
                         '--cache-pause=no',
-                        '--demuxer-thread=yes',
-                        '--demuxer-readahead-secs=30',
-                        '--framedrop=vo',
-                        '--sid=1',
-                        '-cache-secs=30',
+                        '--demuxer-lavf-o-add=fflags=+nobuffer',
+                        '--demuxer-lavf-analyzeduration=0.1',
+                        '--interpolation=no',
+                        '--stream-buffer-size=4k',
                         stream_url])
     except Exception as e:
         print(f"Error: {e}")
+
+
+
 
 def create_user_selection_map():
     return {
