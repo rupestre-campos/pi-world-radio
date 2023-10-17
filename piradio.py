@@ -4,6 +4,8 @@ import time
 import json
 import random
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 import subprocess
 import unicodedata
 from prompt_toolkit import prompt
@@ -11,33 +13,39 @@ from prompt_toolkit.completion import WordCompleter
 
 volume = 50
 is_history_favorites_enabled = True
-HOME_DIR = os.getenv("HOME")
+
+geojson_url = "https://radio.garden/api/ara/content/places"
+stations_url = "https://radio.garden/api/ara/content/page/{station_id}/channels"
+
+HOME_DIR = os.path.expanduser("~")
 DEFAULT_DIR = os.path.join(HOME_DIR, ".radio_cli")
 
 DEFAULT_DATA_FILE_PATH = os.path.join(DEFAULT_DIR,"radios.geojson")
 DEFAULT_HISTORY_FILE_PATH = os.path.join(DEFAULT_DIR, "history.json")
 DEFAULT_FAVORITES_FILE_PATH = os.path.join(DEFAULT_DIR, "favorites.json")
 
-geojson_url = f"https://radio.garden/api/ara/content/places"
 TIMEOUT_CON = 10
 TIMEOUT_FETCH = 10
 
+session = requests.Session()
+retries = Retry(total=3, backoff_factor=1, status_forcelist=[500,502,503,504])
+session.mount("http://", HTTPAdapter(max_retries=retries))
+session.mount("https://", HTTPAdapter(max_retries=retries))
+
 def make_default_dir():
     try:
+        if os.path.isdir(DEFAULT_DIR): return 1
         os.mkdir(DEFAULT_DIR)
+        return 1
     except Exception as e:
-        pass
+        return 0
 
 def clear():
     try:
-        subprocess.run(["clear"])
-    except:
-        pass
-
-def remove_accents(input_str):
-    nfkd_form = unicodedata.normalize('NFKD', input_str)
-    only_ascii = nfkd_form.encode('ASCII', 'ignore')
-    return only_ascii.decode("utf-8")
+        subprocess.run(["cls"] if os.name == "nt" else ["clear"])
+        return 1
+    except Exception as e:
+        return 0
 
 def get_feature(d):
     feature = {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [d['geo'][0], d['geo'][1]]}}
@@ -51,7 +59,7 @@ def get_feature(d):
 
 def fetch_geojson_data(url, default_file_path):
     try:
-        response = requests.get(url, timeout=(TIMEOUT_CON, TIMEOUT_FETCH))
+        response = session.get(url, timeout=(TIMEOUT_CON, TIMEOUT_FETCH))
         response.raise_for_status()  # Raise exception for bad requests
         geo_json = {'type': 'FeatureCollection', 'features': []}
         rg_json = response.json()
@@ -62,16 +70,9 @@ def fetch_geojson_data(url, default_file_path):
             file_open.write(json.dumps(geo_json))
         return geo_json
 
-    except requests.exceptions.RequestException as e:
-        print(e)
-        #import pdb; pdb.set_trace()
-        if os.path.exists(default_file_path):
-            with open(default_file_path) as file_open:
-                geo_json = json.load(file_open)
-                return geo_json
-
-        print("Error fetching GeoJSON data:", e)
-        return None
+    except Exception as e:
+        print("Error fetching GeoJSON data")
+        return {}
 
 def list_countries(geojson_data):
     countries = []
@@ -97,12 +98,12 @@ def list_stations(geojson_data, selected_country, selected_city):
         city = feature['properties']['title']
         if country == selected_country and city == selected_city:
             station = feature['properties']['location_id']
-            response = requests.get(
-                f"https://radio.garden/api/ara/content/page/{station}/channels",
+            response = session.get(
+                stations_url.format(station_id=station),
                 timeout=(TIMEOUT_CON,TIMEOUT_FETCH))
             data = response.json()
             for item in data["data"]["content"][0]["items"]:
-                stations_dict[remove_accents(item["page"]["title"])] = item["page"]
+                stations_dict[item["page"]["title"]] = item["page"]
     return stations_dict
 
 def play_stream(stream_url):
@@ -118,9 +119,6 @@ def play_stream(stream_url):
                         stream_url])
     except Exception as e:
         print(f"Error: {e}")
-
-
-
 
 def create_user_selection_map():
     return {
@@ -167,9 +165,11 @@ def main():
     while run_until_complete:
         try:
 
-            print("Instructions:\n Search as you type")
-            print(" tab for a complete list\n enter for last used or random one if none\n send r to shuffle again")
-            print(" ctrl + c to exit")
+            print("Instructions:")
+            print("Start by chosing between historic (h) favorites (f) or to start fresh new search (anything)")
+            print("Then Search countries, locations and stations as prompted, start to type to filter")
+            print("tab for a complete list\nenter for last used or random one if none\nr or nothing to shuffle")
+            print("ctrl + c to exit")
             print("#"*25)
             countries = list_countries(geojson_data)
 
