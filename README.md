@@ -8,9 +8,11 @@ Providing history and favorites, search as you type and random station functions
 
 A fork from original project pi-world-radio adapted to run with python on the terminal
 being suitable for very old hardware. Tested in a pentium 4 single core, 1.5Gb RAM from 2000's era.
-Developed for Debian linux but may run everywhere with proper adjustment
+Developed in/for linux, not tested but should run ok in other OS like windows, 
+for that you need to adjust likely to install mpv and make it on path.
 
 ##Installation
+LINUX DEBIAN
 install mpv for stream play with
 
 ```sudo apt install mpv```
@@ -31,5 +33,5 @@ then run and have fun
 
 ```python3 piradio.py```
 
-Still work in progress. Feedback and help welcome.
+Still work in progress.
 
