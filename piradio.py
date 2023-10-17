@@ -12,7 +12,6 @@ from prompt_toolkit import prompt
 from prompt_toolkit.completion import FuzzyWordCompleter
 from unidecode import unidecode
 
-volume = 15
 is_history_favorites_enabled = True
 
 geojson_url = "https://radio.garden/api/ara/content/places"
@@ -26,8 +25,10 @@ DEFAULT_DATA_FILE_PATH = os.path.join(DEFAULT_DIR,"radios.geojson")
 DEFAULT_HISTORY_FILE_PATH = os.path.join(DEFAULT_DIR, "history.json")
 DEFAULT_FAVORITES_FILE_PATH = os.path.join(DEFAULT_DIR, "favorites.json")
 
-TIMEOUT_CON = 2
+TIMEOUT_CON = 10
 TIMEOUT_FETCH = 10
+TIMEOUT_STREAM = 5
+TIME_RETRY_STREAM = 0.5
 
 session = requests.Session()
 retries = Retry(total=3, backoff_factor=1, status_forcelist=[500,502,503,504])
@@ -110,17 +111,20 @@ def list_stations(geojson_data, selected_country, selected_city):
 
 def play_stream(stream_url):
     print("Player Control")
-    print("/ decrease volume\n* increase volume" )
-    print("space pause\nm mute\nq exit to main menu" )
-    try:
-        # Use subprocess to execute the MPlayer command with the stream URL
-        subprocess.run(['mpv',
-                        '--no-video',
-                        '--profile=low-latency',
-                        #f'--volume={volume}',
-                        stream_url])
-    except Exception as e:
-        print(f"Error: {e}")
+    print("/ decrease volume\n* increase volume")
+    print("space pause\nm mute\nq exit to main menu")
+
+    subprocess.run([
+        'mpv',
+        '--no-video',
+        f'--network-timeout={TIMEOUT_STREAM}',
+        '--stream-lavf-o=reconnect_streamed=1',
+        '--cache=auto',
+        '--cache-pause=no',
+        '--demuxer-thread=yes',
+        '--framedrop=vo',
+        '--sid=1',
+        stream_url])
 
 def create_user_selection_map():
     return {
