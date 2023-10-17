@@ -117,7 +117,7 @@ def play_stream(stream_url):
         subprocess.run(['mpv',
                         '--no-video',
                         '--profile=low-latency',
-                        f'--volume={volume}',
+                        #f'--volume={volume}',
                         stream_url])
     except Exception as e:
         print(f"Error: {e}")

@@ -11,27 +11,31 @@ being suitable for very old hardware. Tested in a pentium 4 single core, 1.5Gb R
 Developed in/for linux, not tested but should run ok in other OS like windows, 
 for that you need to adjust likely to install mpv and make it on path.
 
-##Installation
-LINUX DEBIAN
+## Installation
+
+DEBIAN Linux
 install mpv for stream play with
 
 ```sudo apt install mpv```
 
+To save configs after exit like volume run
 
-To use with virtualenv
-```sudo apt install python3-venv```
-
-then install python requirements with
 ```
-python3 -m venv .venv
-source .venv/bin/activate
+mkdir -p ~/.config/mpv/scripts && \ 
+wget https://raw.githubusercontent.com/d87/mpv-persist-properties/master/persist-properties.lua \
+-P ~/.config/mpv/scripts
+```
 
+Then clone repo, install python requirements and copy software to path with:
+
+```
+git clone https://github.com/rupestre-campos/pi-world-radio.git
+cd pi-world-radio
 python3 -m pip install -r requirements.txt
+sudo cp piradio.py /usr/bin/piradio.py
+# call it and enjoy 
+piradio.py
 ```
-
-then run and have fun
-
-```python3 piradio.py```
 
 Still work in progress.
 
