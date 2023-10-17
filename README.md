@@ -11,6 +11,9 @@ being suitable for very old hardware. Tested in a pentium 4 single core, 1.5Gb R
 Developed in/for linux, not tested but should run ok in other OS like windows, 
 for that you need to adjust likely to install mpv and make it on path.
 
+check the project that lead to this at:
+https://trustmeiamaninja.github.io/pi-world-radio/
+
 ## Installation
 
 DEBIAN Linux
