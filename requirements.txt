@@ -1,3 +1,4 @@
 requests
 prompt_toolkit
 unidecode
+inputimeout

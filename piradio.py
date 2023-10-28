@@ -11,6 +11,7 @@ import subprocess
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import FuzzyWordCompleter
 from unidecode import unidecode
+from inputimeout import inputimeout, TimeoutOccurred
 
 is_history_favorites_enabled = True
 
@@ -28,7 +29,7 @@ DEFAULT_FAVORITES_FILE_PATH = os.path.join(DEFAULT_DIR, "favorites.json")
 TIMEOUT_CON = 10
 TIMEOUT_FETCH = 10
 TIMEOUT_STREAM = 5
-TIME_RETRY_STREAM = 0.5
+TIME_RETRY_STREAM = 3
 
 session = requests.Session()
 retries = Retry(total=3, backoff_factor=1, status_forcelist=[500,502,503,504])
@@ -119,8 +120,7 @@ def play_stream(stream_url):
         '--no-video',
         f'--network-timeout={TIMEOUT_STREAM}',
         '--stream-lavf-o=reconnect_streamed=1',
-        '--cache=auto',
-        '--cache-pause=no',
+        '--cache=no',
         '--demuxer-thread=yes',
         '--framedrop=vo',
         '--sid=1',
@@ -268,16 +268,30 @@ def main():
 
             station_data = stations_dict[selected_station]
             channel_id = station_data["url"].split("/")[-1]
-            time_value = int(time.time() * 1000)
-            stream_url = stream_url_pattern.format(channel_id=channel_id, time_value=time_value)
             clear()
-            print(f"Country: {selected_country}")
-            print(f"Location: {selected_city}")
-            print(f"Station: {selected_station}")
+            playing = True
             if is_history_favorites_enabled \
                and not selected_station in history.get(selected_country,{}).get(selected_city,{}):
                 write_stations(DEFAULT_HISTORY_FILE_PATH,selected_country, selected_city, selected_station)
-            play_stream(stream_url)
+            print(f"Country: {selected_country}")
+            print(f"Location: {selected_city}")
+            print(f"Station: {selected_station}")
+
+            while playing:
+                time_value = int(time.time() * 1000)
+                stream_url = stream_url_pattern.format(channel_id=channel_id, time_value=time_value)
+                try:
+                    play_stream(stream_url)
+                    user_input = inputimeout(prompt="Really quit? press q + enter", timeout=TIME_RETRY_STREAM)
+                    if user_input == "q":
+                        playing = False
+                except KeyboardInterrupt:
+                    playing = False
+                except TimeoutOccurred:
+                    continue
+                except Exception as e:
+                    print(f"error: {e}")
+                    playing = False
             clear()
             if is_history_favorites_enabled \
                and not selected_station in favorites.get(selected_country,{}).get(selected_city,{}):
