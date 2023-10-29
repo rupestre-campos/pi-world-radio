@@ -2,3 +2,5 @@ requests
 prompt_toolkit
 unidecode
 inputimeout
+fiona
+gj2ascii

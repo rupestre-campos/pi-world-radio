@@ -30,7 +30,7 @@ but feel free to ask for help or enhancements that make sense for other setups t
 DEBIAN Linux
 install mpv for stream play with
 
-```sudo apt install mpv```
+```sudo apt install mpv gdal```
 
 To save configs after exit like volume run
 
