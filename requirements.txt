@@ -2,5 +2,6 @@ requests
 prompt_toolkit
 unidecode
 inputimeout
+shapely==1.8
 fiona
 gj2ascii
