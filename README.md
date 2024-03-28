@@ -31,9 +31,9 @@ but feel free to ask for help or enhancements that make sense for other setups t
 DEBIAN Linux
 install mpv for stream play with
 
-```sudo apt install mpv gdal```
+```sudo apt install mpv gdal-bin```
 
-To save configs after exit like volume run
+To mpv be able to save configs after exit like volume run the following to install a plugin
 
 ```
 mkdir -p ~/.config/mpv/scripts && \ 
