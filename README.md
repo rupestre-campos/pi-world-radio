@@ -46,10 +46,10 @@ Then clone repo, install python requirements and copy software to path with:
 ```
 git clone https://github.com/rupestre-campos/pi-world-radio.git
 cd pi-world-radio
-python3 -m pip install -r requirements.txt
-sudo cp piradio.py /usr/bin/piradio.py
-# call it and enjoy 
-piradio.py
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python piradio.py
 ```
 
 Still work in progress.
